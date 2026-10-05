@@ -1,0 +1,1006 @@
+{
+  "info": {
+    "name": "FareShare API - Local",
+    "description": "Spring Boot local profile on 127.0.0.1:8080. Run folders and requests from top to bottom. Each X-Dev-Email header selects a local test user; the user is created on first request. No Neon connection or real email delivery is required. Requests save IDs and invitation tokens as collection variables. Expense and settlement creation use fixed idempotency keys within a group; change the key variable when you want a new record in the same group. Editing and reversing an expense are one-time actions for each version/state.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('spentOn')) {",
+          "  pm.collectionVariables.set('spentOn', new Date().toISOString().slice(0, 10));",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8080",
+      "type": "string"
+    },
+    {
+      "key": "aliceEmail",
+      "value": "alice@example.com",
+      "type": "string"
+    },
+    {
+      "key": "bobEmail",
+      "value": "bob@example.com",
+      "type": "string"
+    },
+    {
+      "key": "carolEmail",
+      "value": "carol@example.com",
+      "type": "string"
+    },
+    {
+      "key": "aliceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bobId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "carolId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "groupId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bobInviteToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "carolInviteToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "expenseId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "expenseVersion",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "exactExpenseId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "settlementId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rejectedSettlementId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "spentOn",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "equalExpenseKey",
+      "value": "trip-dinner-1",
+      "type": "string"
+    },
+    {
+      "key": "exactExpenseKey",
+      "value": "trip-taxi-1",
+      "type": "string"
+    },
+    {
+      "key": "settlementKey",
+      "value": "trip-payment-1",
+      "type": "string"
+    },
+    {
+      "key": "rejectedSettlementKey",
+      "value": "trip-rejected-payment-1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Start and test users",
+      "description": "Run these requests first to create local users and save their IDs.",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/actuator/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Supported countries and currencies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/catalog/countries"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me - Alice",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{aliceEmail}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('aliceId', data.userId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me - Bob",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{bobEmail}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('bobId', data.userId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me - Carol",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{carolEmail}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('carolId', data.userId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Groups",
+      "description": "Alice creates a group. The group ID is saved automatically.",
+      "item": [
+        {
+          "name": "Create group",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{aliceEmail}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Trip\",\n  \"currencyCode\": \"INR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", function () { pm.response.to.have.status(201); });",
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('groupId', data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List my groups",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{aliceEmail}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get group and members",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{aliceEmail}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups/{{groupId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Invitations",
+      "description": "Local invitation responses contain a link with the token. These scripts save the token; no email is sent.",
+      "item": [
+        {
+          "name": "Invite Bob",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{aliceEmail}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups/{{groupId}}/invites",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{bobEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", function () { pm.response.to.have.status(201); });",
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('bobInviteToken', data.localJoinLink.split('token=')[1]);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bob accepts invitation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{bobEmail}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/invites/accept",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{bobInviteToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invite Carol",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{aliceEmail}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups/{{groupId}}/invites",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{carolEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", function () { pm.response.to.have.status(201); });",
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('carolInviteToken', data.localJoinLink.split('token=')[1]);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Carol accepts invitation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{carolEmail}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/invites/accept",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{carolInviteToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Expenses",
+      "description": "Amounts are integer minor units. INR 90000 means ₹900.00. Run after all three users have joined.",
+      "item": [
+        {
+          "name": "Create equal expense - Alice paid",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{aliceEmail}}",
+                "type": "text"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{equalExpenseKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups/{{groupId}}/expenses",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Dinner\",\n  \"amountMinor\": 90000,\n  \"payerId\": \"{{aliceId}}\",\n  \"spentOn\": \"{{spentOn}}\",\n  \"splitMethod\": \"EQUAL\",\n  \"participantIds\": [\n    \"{{aliceId}}\",\n    \"{{bobId}}\",\n    \"{{carolId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", function () { pm.response.to.have.status(201); });",
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('expenseId', data.id);",
+                  "  pm.collectionVariables.set('expenseVersion', String(data.version));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create exact expense - Bob paid",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{bobEmail}}",
+                "type": "text"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{exactExpenseKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups/{{groupId}}/expenses",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Taxi\",\n  \"amountMinor\": 60000,\n  \"payerId\": \"{{bobId}}\",\n  \"spentOn\": \"{{spentOn}}\",\n  \"splitMethod\": \"EXACT\",\n  \"shares\": [\n    {\n      \"userId\": \"{{aliceId}}\",\n      \"amountMinor\": 10000\n    },\n    {\n      \"userId\": \"{{bobId}}\",\n      \"amountMinor\": 20000\n    },\n    {\n      \"userId\": \"{{carolId}}\",\n      \"amountMinor\": 30000\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", function () { pm.response.to.have.status(201); });",
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('exactExpenseId', data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List expenses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{aliceEmail}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups/{{groupId}}/expenses"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Edit own expense - Alice",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{aliceEmail}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups/{{groupId}}/expenses/{{expenseId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{expenseVersion}},\n  \"description\": \"Dinner corrected\",\n  \"amountMinor\": 120000,\n  \"payerId\": \"{{aliceId}}\",\n  \"spentOn\": \"{{spentOn}}\",\n  \"splitMethod\": \"EQUAL\",\n  \"participantIds\": [\n    \"{{aliceId}}\",\n    \"{{bobId}}\",\n    \"{{carolId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Only the expense creator can edit. expectedVersion must match the last returned version."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('expenseVersion', String(data.version));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Balances and settlements",
+      "description": "Only confirmed payments change balances. A rejected payment is retained for history.",
+      "item": [
+        {
+          "name": "Get balances and suggested payments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{aliceEmail}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups/{{groupId}}/balances"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Record pending settlement - Carol to Alice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{carolEmail}}",
+                "type": "text"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{settlementKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups/{{groupId}}/settlements",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"senderId\": \"{{carolId}}\",\n  \"recipientId\": \"{{aliceId}}\",\n  \"amountMinor\": 40000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", function () { pm.response.to.have.status(201); });",
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('settlementId', data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm settlement - Alice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{aliceEmail}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/settlements/{{settlementId}}/confirm",
+            "description": "Only the recipient can confirm this pending settlement."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Record settlement for rejection - Carol to Bob",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{carolEmail}}",
+                "type": "text"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{rejectedSettlementKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups/{{groupId}}/settlements",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"senderId\": \"{{carolId}}\",\n  \"recipientId\": \"{{bobId}}\",\n  \"amountMinor\": 10000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", function () { pm.response.to.have.status(201); });",
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('rejectedSettlementId', data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject settlement - Bob",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{bobEmail}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/settlements/{{rejectedSettlementId}}/reject",
+            "description": "Only the recipient can reject this pending settlement."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List settlements",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{aliceEmail}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups/{{groupId}}/settlements"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get balances after settlement",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{aliceEmail}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups/{{groupId}}/balances"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Reverse and review",
+      "description": "Run reversal once; a reversed expense stays in history but no longer affects balances.",
+      "item": [
+        {
+          "name": "Reverse own expense - Alice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{aliceEmail}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups/{{groupId}}/expenses/{{expenseId}}/reverse"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List activity",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{aliceEmail}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups/{{groupId}}/activity"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Final balances",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Dev-Email",
+                "value": "{{aliceEmail}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/groups/{{groupId}}/balances"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
